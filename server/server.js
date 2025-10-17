@@ -10,7 +10,11 @@ import userRouter from './routes/userRoutes.js';
 const app = express();
 await connectCloudinary();
 
-app.use(cors())
+app.use(cors({
+  origin: 'https://genaura.onrender.com',
+  credentials: true,
+}));
+
 app.use(express.json())
 app.use(clerkMiddleware())
 

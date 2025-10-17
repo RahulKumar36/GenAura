@@ -1,7 +1,7 @@
 GenAura - The All-in-One AI Content Suite
 GenAura is a powerful, full-stack AI-powered SaaS application designed to be a one-stop solution for content creators, marketers, and professionals. From generating high-quality written content to advanced image manipulation, GenAura leverages cutting-edge AI to streamline creative workflows.
 
-[Live Demo Link Not Available]
+Live Application - https://genaura.onrender.com
 
 ✨ Core Features
 GenAura offers a suite of powerful AI tools in a single, intuitive platform:
