@@ -1,4 +1,4 @@
-import { Eraser, Sparkles, Download } from 'lucide-react'; 
+import { Eraser, Sparkles, Download } from 'lucide-react';
 import React, { useState } from 'react'
 import axios from 'axios'
 import { useAuth } from '@clerk/clerk-react';
@@ -7,141 +7,125 @@ import toast from 'react-hot-toast';
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL
 
 const RemoveBackground = () => {
+    // The 'input' state now holds the file object for naming the download
+    const [input, setInput] = useState(null)
+    const [loading, setLoading] = useState(false)
+    const [content, setContent] = useState('')
 
-  const [input, setInput] = useState(null) 
-  const [loading, setLoading] = useState(false)
-  const [content, setContent] = useState('')
+    const { getToken } = useAuth()
 
-  const { getToken } = useAuth()
+    const onSubmitHandler = async (e) => {
+        e.preventDefault();
+        try {
+            setLoading(true)
+            const formData = new FormData()
+            formData.append('image', input)
 
-  const onSubmitHandler = async (e) => {
-    e.preventDefault();
-    if (!input) {
-      toast.error('Please upload an image first.');
-      return;
-    }
-    try {
-      setLoading(true)
-      const formData = new FormData()
-      formData.append('image', input)
+            const { data } = await axios.post('/api/ai/remove-image-background', formData, {
+                headers: { Authorization: `Bearer ${await getToken()}` }
+            })
 
-      const { data } = await axios.post('/api/ai/remove-image-background', formData, {
-        headers: { Authorization: `Bearer ${await getToken()}` }
-      })
-
-      if (data.success) {
-        setContent(data.content)
-        toast.success('Background removed successfully!'); 
-      } else {
-        toast.error(data.message)
-      }
-    } catch (error) {
-      toast.error(error.message)
-    }
-    setLoading(false)
-  }
-
-  // 4. Add the download handler function
-  const handleDownload = async () => {
-    if (!content) {
-      toast.error('No image to download.');
-      return;
+            if (data.success) {
+                setContent(data.content)
+                // Added success feedback
+                toast.success('Background removed successfully!');
+            } else {
+                toast.error(data.message)
+            }
+        } catch (error) {
+            toast.error(error.message)
+        }
+        setLoading(false)
     }
 
-    try {
-      // Fetch the image data
-      const response = await fetch(content);
-      if (!response.ok) throw new Error('Network response was not ok');
-
-      // Convert the image to a blob
-      const blob = await response.blob();
-
-      // Create a temporary URL for the blob
-      const url = window.URL.createObjectURL(blob);
-
-      // Create a temporary link element
-      const a = document.createElement('a');
-      a.href = url;
-
-      // Create a new filename (e.g., "my-photo_no-bg.png")
-      const originalName = input?.name?.split('.').slice(0, -1).join('.') || 'processed-image';
-      a.download = `${originalName}_no-bg.png`;
-
-      // Append the link to the body, click it, and remove it
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      // Revoke the temporary URL to free up memory
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Download started!');
-    } catch (error) {
-      console.error('Download failed:', error);
-      toast.error('Failed to download image.');
-    }
-  };
-
-
-  return (
-    <div className='h-full overflow-y-scroll p-6 flex items-start flex-wrap gap-4 text-slate-700'>
-      {/*left-col*/}
-      <form onSubmit={onSubmitHandler} className='w-full max-w-lg p-4 bg-white rounded-lg border border-gray-200'>
-        <div className='flex items-center gap-3'>
-          <Sparkles className='w-6 text-[#FF4938]' />
-          <h1 className='text-xl font-semibold'>Background Removal</h1>
-        </div>
-        <p className='mt-6 text-sm font-medium'>Upload image</p>
-
-        <input onChange={(e) => setInput(e.target.files[0])} type="file" accept='image/*' className='w-full p-2 px-3 mt-2 outline-none text-sm rounded-md border border-gray-300 text-gray-600 file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100' required />
-
-        <p className='text-xs text-gray-500 font-light mt-1'> Supports JPG,PNG and other image formats</p>
-
-
-        <button disabled={loading} className='w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#F6AB41] to-[#FF4938] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer'>
-          {
-            loading ? <span className='w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin'></span> :
-              <Eraser className='w-5' />
-          }
-
-          Remove background
-        </button>
-      </form>
-      {/*right-col*/}
-      <div className='w-full max-w-lg p-4 bg-white rounded-lg flex flex-col border border-gray-200 min-h-96 '>
-        
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-3'>
-            <Eraser className='w-5 h-5 text-[#FF4938]' />
-            <h1 className='text-xl font-semibold'>Processed Image</h1>
-          </div>
-          {content && (
-            <button
-              onClick={handleDownload}
-              className='p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-orange-600 transition'
-              title="Download Image"
-            >
-              <Download className='w-5 h-5' />
-            </button>
-          )}
-        </div>
-        {
-          !content ? (
-            <div className='flex-1 flex justify-center items-center'>
-              <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
-                <Eraser className='w-9 h-9' />
-                <p>Upload an image and click "Remove Background" to get started</p>
-              </div>
-            </div>
-          ) : (
-            <img src={content} alt="Processed" className='mt-3 w-full h-full object-contain rounded-md' />
-          )
+    // Added the download handler function
+    const handleDownload = async () => {
+        if (!content) {
+            toast.error('No image to download.');
+            return;
         }
 
+        try {
+            const response = await fetch(content);
+            if (!response.ok) throw new Error('Network response was not ok');
 
-      </div>
-    </div>
-  )
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+
+            // Creates a filename like "my_image_bg_removed.png"
+            const originalFilename = input?.name.split('.').slice(0, -1).join('.') || 'processed-image';
+            const filename = `${originalFilename}_bg_removed.png`;
+            a.download = filename;
+
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            toast.success('Image download started!');
+        } catch (error) {
+            console.error('Download failed:', error);
+            toast.error('Failed to download image.');
+        }
+    };
+
+    return (
+        <div className='h-full overflow-y-auto p-6 flex items-start flex-wrap gap-4 text-gray-300'>
+            {/*left-col*/}
+            <form onSubmit={onSubmitHandler} className='w-full max-w-lg p-4 bg-gray-800 rounded-lg border border-gray-700'>
+                <div className='flex items-center gap-3'>
+                    <Sparkles className='w-6 text-[#FF4938]' />
+                    <h1 className='text-xl font-semibold text-white'>Background Removal</h1>
+                </div>
+                <p className='mt-6 text-sm font-medium text-gray-300'>Upload image</p>
+
+                <input onChange={(e) => setInput(e.target.files[0])} type="file" accept='image/*' className='w-full mt-2 outline-none text-sm rounded-md border border-gray-600 text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-700 file:text-gray-300 hover:file:bg-gray-600' required />
+
+                <p className='text-xs text-gray-500 font-light mt-1'> Supports JPG, PNG and other image formats</p>
+
+
+                <button disabled={loading} className='w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#F6AB41] to-[#FF4938] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer disabled:opacity-50'>
+                    {
+                        loading ? <span className='w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin'></span> :
+                            <Eraser className='w-5' />
+                    }
+
+                    Remove background
+                </button>
+            </form>
+            {/*right-col*/}
+            <div className='w-full max-w-lg p-4 bg-gray-800 rounded-lg flex flex-col border border-gray-700 min-h-96 '>
+                <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-3'>
+                        <Eraser className='w-5 h-5 text-[#FF4938]' />
+                        <h1 className='text-xl font-semibold text-white'>Processed Image</h1>
+                    </div>
+                    {/* The download button, only shown if 'content' exists */}
+                    {content && (
+                        <button
+                            onClick={handleDownload}
+                            className='p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-[#FF4938] transition'
+                            title="Download Image"
+                        >
+                            <Download className='w-5 h-5' />
+                        </button>
+                    )}
+                </div>
+                {
+                    !content ? (<div className='flex-1 flex justify-center items-center'>
+                        <div className='text-sm flex flex-col items-center gap-5 text-gray-500'>
+                            <Eraser className='w-9 h-9' />
+                            <p>Upload an image and click "Remove Background" to get started</p>
+                        </div>
+
+                    </div>) : (
+                        <img src={content} alt="processed" className='mt-3 w-full h-full object-contain rounded-lg' />
+                    )
+                }
+            </div>
+        </div>
+    )
 }
 
 export default RemoveBackground
