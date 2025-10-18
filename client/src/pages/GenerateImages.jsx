@@ -1,106 +1,162 @@
-import { Hash, Image, Sparkles } from 'lucide-react'
+import { Hash, Image, Sparkles, Download } from 'lucide-react' // 1. Import the Download icon
 import React, { useState } from 'react'
 import axios from 'axios'
 import { useAuth } from '@clerk/clerk-react'
 import toast from 'react-hot-toast'
 
-axios.defaults.baseURL=import.meta.env.VITE_BASE_URL
+axios.defaults.baseURL = import.meta.env.VITE_BASE_URL
 
 const GenerateImages = () => {
-    const imageStyle = ['Realistic', 'Ghibli style','Anime style','Cartoon style','Fantasy style','Realistic style','3D style','Portrait style']
-      
-    
-      const [selectedStyle,setSelectedStyle] = useState('Realistic')
-      const [input,setInput]=useState('')
-
-      const [publish,setPublish]=useState(false)
-
-      const [loading,setLoading]=useState(false)
-  const [content,setContent]=useState('')
-
-  const {getToken}=useAuth()
+  const imageStyle = ['Realistic', 'Ghibli style', 'Anime style', 'Cartoon style', 'Fantasy style', 'Realistic style', '3D style', 'Portrait style']
 
 
-    const onSubmitHandler = async(e) => {
-      e.preventDefault();
+  const [selectedStyle, setSelectedStyle] = useState('Realistic')
+  const [input, setInput] = useState('')
 
-      try {
-        setLoading(true)
-        const prompt=` Generate an image of ${input} in the style ${selectedStyle}`
+  const [publish, setPublish] = useState(false)
 
-        const {data}=await axios.post('/api/ai/generate-image',{prompt,publish},{
-        headers:{Authorization:`Bearer ${await getToken()}`}
+  const [loading, setLoading] = useState(false)
+  const [content, setContent] = useState('')
+
+  const { getToken } = useAuth()
+
+
+  const onSubmitHandler = async (e) => {
+    e.preventDefault();
+
+    try {
+      setLoading(true)
+      const prompt = ` Generate ans image of ${input} in the style ${selectedStyle}`
+
+      const { data } = await axios.post('/api/ai/generate-image', { prompt, publish }, {
+        headers: { Authorization: `Bearer ${await getToken()}` }
       })
 
-       if(data.success){
+      if (data.success) {
         setContent(data.content)
-       }else{
+        toast.success('Image generated successfully!') // Added feedback
+      } else {
         toast.error(data.message)
-       }
-      } catch (error) {
-        toast.error(error.message)
       }
-      setLoading(false)
+    } catch (error) {
+      toast.error(error.message)
     }
+    setLoading(false)
+  }
+
+  // 2. Add the download handler function
+  const handleDownload = async () => {
+    if (!content) {
+      toast.error('No image to download.');
+      return;
+    }
+
+    try {
+      // Fetch the image data
+      const response = await fetch(content);
+      if (!response.ok) throw new Error('Network response was not ok');
+
+      // Convert the image to a blob
+      const blob = await response.blob();
+
+      // Create a temporary URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary link element
+      const a = document.createElement('a');
+      a.href = url;
+
+      // Create a dynamic filename (e.g., "realistic_cat.png")
+      const filename = `${selectedStyle.toLowerCase().replace(' ', '-')}_${input.split(' ').slice(0, 3).join('_') || 'generated-image'}.png`;
+      a.download = filename;
+
+      // Append the link to the body, click it, and remove it
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Revoke the temporary URL to free up memory
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Image download started!');
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.error('Failed to download image.');
+    }
+  };
+
+
   return (
-   <div className='h-full overflow-y-auto p-6 flex items-start flex-wrap gap-4 text-gray-300'>
+    <div className='h-full overflow-y-scroll p-6 flex items-start flex-wrap gap-4 text-slate-700'>
       {/*left-col*/}
-      <form onSubmit={onSubmitHandler} className='w-full max-w-lg p-4 bg-gray-800 rounded-lg border border-gray-700'>
-       <div className='flex items-center gap-3'>
-        <Sparkles className='w-6 text-[#00AD25]'/>
-        <h1 className='text-xl font-semibold text-white'>AI Image Generator</h1>
-       </div>
-       <p className='mt-6 text-sm font-medium text-gray-300'>Describe Your Image</p>
-       <textarea onChange={(e)=>setInput(e.target.value)} value={input} rows={4} className='w-full p-2 px-3 mt-2 outline-none text-sm rounded-md border border-gray-600 bg-gray-900 text-white placeholder-gray-500'  placeholder='Describe what you want to see in the image...' required/>
+      <form onSubmit={onSubmitHandler} className='w-full max-w-lg p-4 bg-white rounded-lg border border-gray-200'>
+        <div className='flex items-center gap-3'>
+          <Sparkles className='w-6 text-[#00AD25]' />
+          <h1 className='text-xl font-semibold'>AI Image Generator</h1>
+        </div>
+        <p className='mt-6 text-sm font-medium'>Describe Your Image</p>
+        <textarea onChange={(e) => setInput(e.target.value)} value={input} row={4} className='w-full p-2 px-3 mt-2 outline-none text-sm rounded-md border border-gray-300' placeholder='Describe what you wnat to see in the image...' required />
 
-       <p className='mt-4 text-sm font-medium text-gray-300'>Style</p>
+        <p className='mt-4 text-sm font-medium'>Style</p>
 
-       <div className='mt-3 flex gap-3 flex-wrap sm:max-w-9/11'>
-        {imageStyle.map((item)=>(
-          <span onClick={() =>setSelectedStyle(item)} className={`text-xs px-4 py-1 border rounded-full cursor-pointer ${selectedStyle===item ? 'bg-green-500/10 border-green-500 text-green-400' : 'text-gray-400 border-gray-600 hover:bg-gray-700'}`} key={item}>{item}</span>
-        ))}
-       </div>
+        <div className='mt-3 flex gap-3 flex-wrap sm:max-w-9/11'>
+          {imageStyle.map((item) => (
+            <span onClick={() => setSelectedStyle(item)} className={`text-xs px-4 py-1 border rounded-full cursor-pointer ${selectedStyle === item ? 'bg-green-50 text-green-700' : 'text-gray-500 border-gray-300'}`} key={item}>{item}</span>
+          ))}
+        </div>
 
-       <div className='my-6 flex items-center gap-3'>
-        <label className='relative cursor-pointer'>
-          <input type="checkbox" onChange={(e)=>setPublish(e.target.checked)} checked={publish} className='sr-only peer' />
+        <div className='my-6 flex items-center gap-2'>
+          <label className='relative cursor-pointer'>
+            <input type="checkbox" onChange={(e) => setPublish(e.target.checked)} checked={publish} className='sr-only peer' />
 
-          <div className='w-9 h-5 bg-gray-600 rounded-full peer-checked:bg-green-500 transition'></div>
-          <span className='absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition peer-checked:translate-x-4'></span>
-        </label>
-<p className='text-sm text-gray-300'>Make this image Public</p>
-       </div>
+            <div className='w-9 h-5 bg-slate-300 rounded-full peer-checked:bg-green-500 transition'></div>
+            <span className='absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition peer-checked:translate-x-4'></span>
+          </label>
+          <p className='text-sm'>Make this image Public</p>
+        </div>
 
-      
-       <button disabled={loading} className='w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#00AD25] to-[#04FF50] text-white px-4 py-2 text-sm rounded-lg cursor-pointer disabled:opacity-50'>
-        {
-          loading ?<span className='w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin'></span> :  <Image className='w-5'/>
-        }
-       
-        Generate Image
-       </button>
+
+        <button disabled={loading} className='w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#00AD25] to-[#04FF50] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer'>
+          {
+            loading ? <span className='w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin'></span> : <Image className='w-5' />
+          }
+
+          Generate Image
+        </button>
       </form>
       {/*right-col*/}
-      <div className='w-full max-w-lg p-4 bg-gray-800 rounded-lg flex flex-col border border-gray-700 min-h-96 '>
-<div className='flex items-center gap-3'>
-<Image className='w-5 h-5 text-[#00AD25]'/>
-<h1 className='text-xl font-semibold text-white'>Generated Image</h1>
-</div>
-{
-  !content ? (
-    <div className='flex-1 flex justify-center items-center'>
-  <div className='text-sm flex flex-col items-center gap-5 text-gray-500'>
-    <Image className='w-9 h-9'/>
-    <p>Describe your image and click "Generate Image" to get started</p>
-  </div>
+      <div className='w-full max-w-lg p-4 bg-white rounded-lg flex flex-col border border-gray-200 min-h-96 '>
+        <div className='flex items-center justify-between'> 
+          <div className='flex items-center gap-3'>
+            <Image className='w-5 h-5 text-[#00AD25]' />
+            <h1 className='text-xl font-semibold'>Generated Image</h1>
+          </div>
+          {/* the download button, only shown if 'content' exists */}
+          {content && (
+            <button
+              onClick={handleDownload}
+              className='p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-green-600 transition'
+              title="Download Image"
+            >
+              <Download className='w-5 h-5' />
+            </button>
+          )}
+        </div>
+        {
+          !content ? (
+            <div className='flex-1 flex justify-center items-center'>
+              <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
+                <Image className='w-9 h-9' />
+                <p>Describe your Image and click "Generate Image" to get started</p>
+              </div>
 
-</div>
-  ) : (
-    <div className='mt-3 h-full'>
-      <img src={content} alt="generated image" className='w-full h-full object-contain rounded-lg' />
-    </div>
-  )
-}
+            </div>
+          ) : (
+            <div className='mt-3 h-full relative'>
+              <img src={content} alt="Generated content" className='w-full h-full object-cover rounded-md' /> 
+            </div>
+          )
+        }
 
 
       </div>
